@@ -6,6 +6,5 @@
             "email": "kearth@yeah.net"
         }
     ],
-    "minimum-stability": "dev",
     "require": {}
 }
