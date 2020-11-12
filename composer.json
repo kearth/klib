@@ -1,0 +1,11 @@
+{
+    "name": "kearth/ktools",
+    "authors": [
+        {
+            "name": "kearth",
+            "email": "kearth@yeah.net"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {}
+}
