@@ -2,14 +2,17 @@
 namespace Ktools;
 
 class JsonFormat {
+
+    public static function printJson(array $jsonArr) : string {
+        return json_encode($jsonArr, JSON_PRETTY_PRINT);
+    }
+
     public static function checkFormat(string $jsonStr) {
         try{
-            $result = json_decode($jsonStr, true, 512, JSON_PRETTY_PRINT);
-            if(is_null($result)) {
-                return json_last_error_msg(); 
-            } 
-            return $jsonStr;
+            $paser = new Json\Parser($jsonStr);
+            $paser->parse();
         
+
         } catch(\JsonException $jsonException) {
             var_export($jsonException);
             return $jsonException->getMessage();
