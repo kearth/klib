@@ -6,85 +6,60 @@ class Lexer {
 
     private int $index;
 
-    private array $jsonArr;
+    private int $len;
 
     private string $json;
 
     private int $status;
 
-    public function __construct(&array $jsonArr, string $json) {
+    private int $initStatus = 0; 
+
+    public function __construct(string $json) {
         $this->json    = $json; 
-        $this->jsonArr = $jsonArr;
+        $this->len     = strlen($json);
         $this->status  = 0;
     }    
 
-    public function getToken(int $index) : int {
-        
-
-    }
-
-    private function parseObject(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseArray(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseNull(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseFalse(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseTrue(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseString(&$arr, $index) : int {
-        $index += 1;
-        return $index;
-    }
-
-    private function parseNumber(&$arr, $index) : int {
-        $index += 1;
-        return $index;
+    public function isWhiteSpace(string $ch) : bool {
+        return ' ' === $ch; 
     }
 
     public function nextToken() : object {
-    
-        switch ($chr) {
-        case "{":       
-            $this->index = $this->parseObject($this->jsonArr, $this->index);
-            break;    
-        case "[":        
-            $this->index = $this->parseArray($this->jsonArr, $this->index);
-            break;    
-        case 'n':
-            $this->index = $this->parseNull($this->jsonArr, $this->index);
-            break;    
-        case 't':
-            $this->index = $this->parseTrue($this->jsonArr, $this->index);
-            break;    
-        case 'f':
-            $this->index = $this->parseFalse($this->jsonArr, $this->index);
-            break;    
-        case '"':
-            $this->index = $this->parseString($this->jsonArr, $this->index);
-            break;    
-        default:
-            $this->index = $this->parseNumber($this->jsonArr, $this->index);
+        while(true) {
+            if (!$this->hasMore()) {
+                return new Token(Token.T_END_DOC, null); 
+            }
+            $ch = $this->nextChar();
+            if(!isWhiteSpace($ch)) {
+                break; 
+            }
         }
-    }
-
-    public function hasMore() : bool {
-    
+        switch ($ch) {
+        case "{":       
+            return new Token(Token.T_BEGIN_OBJ, null);
+        case "}":       
+            return new Token(Token.T_END_OBJ, null);
+        case "[":        
+            return new Token(Token.T_BEGIN_ARR, null);
+        case "]":        
+            return new Token(Token.T_END_ARR, null);
+        case ',':
+            return new Token(Token.T_SEP_COMMMA, null);
+        case ':':
+            return new Token(Token.T_SEP_COLON, null);
+        case 'n':
+            return new Token(Token.T_NULL, $this->readNull());
+        case 't':
+            return new Token(Token.T_BOOLEAN, $this->readTrue());
+        case 'f':
+            return new Token(Token.T_BOOLEAN, $this->readFalse());
+        case '"':
+            return new Token(Token.T_STRING, $this->readString());
+        default:
+            if (is_numeric($ch)) {
+                return new Token(Token.T_NUMBER, $this->readNumber());
+            }
+        }
+        throw new Error('Illegal character');
     }
 }
