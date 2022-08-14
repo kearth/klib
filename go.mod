@@ -1,3 +1,3 @@
-module github.com/kearth/ktools
+module github.com/kearth/kgolib
 
-go 1.14
+go 1.18
