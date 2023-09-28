@@ -1,4 +1,4 @@
-package terrors
+package kerrors
 
 var (
 	// 0

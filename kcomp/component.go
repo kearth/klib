@@ -1,4 +1,4 @@
-package core
+package kcomp
 
 // ComponentType 组件类型
 type ComponentType string
