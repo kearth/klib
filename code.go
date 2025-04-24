@@ -1,4 +1,4 @@
-package kerrors
+package main
 
 var (
 	// 0
