@@ -7,3 +7,10 @@ type Request struct {
 	Method  string         `json:"method"`           // 方法名
 	Params  map[string]any `json:"params,omitempty"` // 可选参数，key-value 格式
 }
+
+type Map interface {
+	Get(key string) any
+	Set(key string, value any)
+	Len() int
+	String() string
+}
