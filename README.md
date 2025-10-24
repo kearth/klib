@@ -21,6 +21,7 @@ func main() {
     result := golib.DoSomething()
     fmt.Println(result)
 }
+```
 
 #安装
 
