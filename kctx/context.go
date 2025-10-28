@@ -1,3 +1,12 @@
+// 提供增强版上下文管理，基于标准 context.Context 扩展，
+// 支持元数据键值对存储、追踪ID（TraceID）自动生成与继承，
+// 并保证并发安全的读写操作。
+//
+// 核心特性：
+// - 完全兼容标准 context 接口，可无缝替换原生 context
+// - 内置 TraceID 用于分布式追踪，支持从父上下文继承
+// - 提供线程安全的 Set/Get 方法管理元数据
+// - 支持 WithCancel/WithTimeout 等衍生上下文创建
 package kctx
 
 import (
@@ -8,15 +17,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// 常量定义：使用大写+下划线命名，符合Go常量规范，明确区分"键名"语义
 const (
-	TraceIDKey = "TraceID" // 跟踪ID的上下文键
-	MetaMapKey = "MetaMap" // 元数据映射的上下文键
+	// TraceIDKey 用于在上下文中存储/获取 TraceID 的键，
+	// 可通过 context.Value(TraceIDKey) 从父上下文继承 TraceID。
+	TraceIDKey = "TraceID"
+	// MetaMapKey 用于在上下文中存储/获取元数据映射的键，
+	// 通过 context.Value(MetaMapKey) 可获取所有元数据的副本。
+	MetaMapKey = "MetaMap"
 )
 
 type (
 
-	// 上下文接口
+	// Context 扩展标准 context.Context 接口，增加元数据和追踪ID管理能力。
+	// 实现了标准库 context.Context 的所有方法，可直接作为标准上下文使用。
 	Context interface {
 		context.Context
 		Get(key string) string
