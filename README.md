@@ -31,3 +31,8 @@ go get -u github.com/kearth/klib
 ```
 
 希望你们喜欢这个库！如果您有任何问题或建议，请随时提出。
+
+## 详细文档
+- [kctx 上下文管理](docs/kctx.md)
+- [kerr 错误处理](docs/kerr.md)
+- [kutil 工具函数](docs/kutil.md)
