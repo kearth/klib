@@ -151,3 +151,8 @@ func Error(ctx context.Context, v ...any) {
 func Panic(ctx context.Context, v ...any) {
 	Logger().Panic(ctx, v...)
 }
+
+// Print 打印日志
+func Print(ctx context.Context, v ...any) {
+	Logger().Print(ctx, v...)
+}
