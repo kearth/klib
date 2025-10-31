@@ -61,10 +61,16 @@ func New(parent ...context.Context) Context {
 	if parentTraceID, ok := baseCtx.Value(TraceIDKey).(string); ok && parentTraceID != "" {
 		traceID = parentTraceID
 	}
+
+	meta := make(map[string]string)
+	if parentMeta, ok := baseCtx.Value(MetaMapKey).(map[string]string); ok {
+		meta = parentMeta
+	}
+
 	return &kCtx{
 		ctx:     baseCtx,
 		traceID: traceID,
-		meta:    make(map[string]string),
+		meta:    meta,
 	}
 }
 

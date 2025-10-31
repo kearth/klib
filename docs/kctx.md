@@ -61,7 +61,7 @@ func New(parent ...context.Context) Context
 创建上下文
 
 <a name="WithCancel"></a>
-### func [WithCancel](<https://github.com/kearth/klib/blob/master/kctx/context.go#L193>)
+### func [WithCancel](<https://github.com/kearth/klib/blob/master/kctx/context.go#L199>)
 
 ```go
 func WithCancel(parent Context) (Context, context.CancelFunc)
@@ -70,7 +70,7 @@ func WithCancel(parent Context) (Context, context.CancelFunc)
 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\- 上下文衍生函数 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\- WithCancel 基于父上下文创建可取消的新上下文，并发安全
 
 <a name="WithTimeout"></a>
-### func [WithTimeout](<https://github.com/kearth/klib/blob/master/kctx/context.go#L216>)
+### func [WithTimeout](<https://github.com/kearth/klib/blob/master/kctx/context.go#L222>)
 
 ```go
 func WithTimeout(parent Context, timeout time.Duration) (Context, context.CancelFunc)

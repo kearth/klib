@@ -6,6 +6,7 @@ import "github.com/gogf/gf/v2/util/gconv"
 // 1. 三元运算：当传入 trueVal 和 falseVal 时，返回对应值
 // 2. 条件执行：当传入 f（或 f、g）时，执行对应函数
 // 注：两种功能通过参数类型区分，互斥使用
+// 注意：Go 语言中，函数参数会先求值再传递，因此如果传入的函数有副作用，需要注意顺序问题。
 func If[T any](condition bool, trueVal any, falseVal ...any) T {
 	// 场景1：三元运算（trueVal 和 falseVal[0] 为同类型值）
 	if len(falseVal) == 1 {

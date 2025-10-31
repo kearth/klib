@@ -65,7 +65,10 @@ type Log struct {
 //	name - 日志实例名称（对应配置中的日志名称）
 //	返回：*glog.Logger 日志实例
 func Logger(name ...string) *glog.Logger {
-	return kutil.If[*glog.Logger](len(name) > 0, g.Log(name[0]), g.Log())
+	if len(name) > 0 {
+		return g.Log(name[0])
+	}
+	return g.Log()
 }
 
 // formatBody 格式化日志主体
@@ -103,18 +106,22 @@ func (l *Log) String() string {
 
 // AddToCtx 追加参数
 func AddToCtx(ctx context.Context, key string, val string) context.Context {
-	newCtx := kctx.New(ctx)
-	newCtx.Set(key, val)
-	return newCtx.Context()
+	return AddMapToCtx(ctx, map[string]string{key: val})
 }
 
 // AddMapToCtx 追加参数 - map
 func AddMapToCtx(ctx context.Context, kv map[string]string) context.Context {
-	newCtx := kctx.New(ctx)
-	for k, v := range kv {
-		newCtx.Set(k, v)
+	var newCtx kctx.Context
+	var ok bool
+	if newCtx, ok = ctx.(kctx.Context); ok {
+		for k, v := range kv {
+			newCtx.Set(k, v)
+		}
+	} else {
+		ctx = context.WithValue(ctx, kctx.MetaMapKey, kv)
+		newCtx = kctx.New(ctx)
 	}
-	return newCtx.Context()
+	return newCtx
 }
 
 // Info 打印日志
