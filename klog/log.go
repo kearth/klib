@@ -82,11 +82,9 @@ func formatBody(body []any, add map[string]string) string {
 		b.WriteString(" ]")
 	}
 	if len(body) > 0 {
-		b.WriteString(" {")
 		for _, v := range body {
 			b.WriteString(gconv.String(v))
 		}
-		b.WriteString(" }")
 	}
 	return b.String()
 }
