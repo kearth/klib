@@ -81,10 +81,21 @@ func formatBody(body []any, add map[string]string) string {
 		}
 		b.WriteString(" ]")
 	}
+
+	var colorName Color
 	if len(body) > 0 {
+		if c, ok := body[0].(Color); ok {
+			colorName = c
+			body = body[1:]
+		}
 		for _, v := range body {
 			b.WriteString(gconv.String(v))
 		}
+	}
+	if colorName != 0 {
+		var nb strings.Builder
+		nb.WriteString(color.New(color.Attribute(colorName)).Sprint(b.String()))
+		return nb.String()
 	}
 	return b.String()
 }

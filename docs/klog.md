@@ -10,6 +10,7 @@ import "github.com/kearth/klib/klog"
 
 - [func AddMapToCtx\(ctx context.Context, kv map\[string\]string\) context.Context](<#AddMapToCtx>)
 - [func AddToCtx\(ctx context.Context, key string, val string\) context.Context](<#AddToCtx>)
+- [func ColorPrint\(ctx context.Context, color Color, v ...any\)](<#ColorPrint>)
 - [func Debug\(ctx context.Context, v ...any\)](<#Debug>)
 - [func DefaultHandler\(ctx context.Context, in \*glog.HandlerInput\)](<#DefaultHandler>)
 - [func Error\(ctx context.Context, v ...any\)](<#Error>)
@@ -18,13 +19,15 @@ import "github.com/kearth/klib/klog"
 - [func Logger\(name ...string\) \*glog.Logger](<#Logger>)
 - [func Notice\(ctx context.Context, v ...any\)](<#Notice>)
 - [func Panic\(ctx context.Context, v ...any\)](<#Panic>)
+- [func Print\(ctx context.Context, v ...any\)](<#Print>)
 - [func Warn\(ctx context.Context, v ...any\)](<#Warn>)
+- [type Color](<#Color>)
 - [type Log](<#Log>)
   - [func \(l \*Log\) String\(\) string](<#Log.String>)
 
 
 <a name="AddMapToCtx"></a>
-## func [AddMapToCtx](<https://github.com/kearth/klib/blob/master/klog/log.go#L113>)
+## func [AddMapToCtx](<https://github.com/kearth/klib/blob/master/klog/log.go#L122>)
 
 ```go
 func AddMapToCtx(ctx context.Context, kv map[string]string) context.Context
@@ -33,7 +36,7 @@ func AddMapToCtx(ctx context.Context, kv map[string]string) context.Context
 AddMapToCtx 追加参数 \- map
 
 <a name="AddToCtx"></a>
-## func [AddToCtx](<https://github.com/kearth/klib/blob/master/klog/log.go#L108>)
+## func [AddToCtx](<https://github.com/kearth/klib/blob/master/klog/log.go#L117>)
 
 ```go
 func AddToCtx(ctx context.Context, key string, val string) context.Context
@@ -41,8 +44,17 @@ func AddToCtx(ctx context.Context, key string, val string) context.Context
 
 AddToCtx 追加参数
 
+<a name="ColorPrint"></a>
+## func [ColorPrint](<https://github.com/kearth/klib/blob/master/klog/color_print.go#L22>)
+
+```go
+func ColorPrint(ctx context.Context, color Color, v ...any)
+```
+
+ColorPrint 彩色打印日志
+
 <a name="Debug"></a>
-## func [Debug](<https://github.com/kearth/klib/blob/master/klog/log.go#L133>)
+## func [Debug](<https://github.com/kearth/klib/blob/master/klog/log.go#L142>)
 
 ```go
 func Debug(ctx context.Context, v ...any)
@@ -60,7 +72,7 @@ func DefaultHandler(ctx context.Context, in *glog.HandlerInput)
 DefaultHandler 默认日志处理
 
 <a name="Error"></a>
-## func [Error](<https://github.com/kearth/klib/blob/master/klog/log.go#L148>)
+## func [Error](<https://github.com/kearth/klib/blob/master/klog/log.go#L157>)
 
 ```go
 func Error(ctx context.Context, v ...any)
@@ -69,7 +81,7 @@ func Error(ctx context.Context, v ...any)
 Error 打印错误级日志
 
 <a name="Info"></a>
-## func [Info](<https://github.com/kearth/klib/blob/master/klog/log.go#L128>)
+## func [Info](<https://github.com/kearth/klib/blob/master/klog/log.go#L137>)
 
 ```go
 func Info(ctx context.Context, v ...any)
@@ -101,7 +113,7 @@ name - 日志实例名称（对应配置中的日志名称）
 ```
 
 <a name="Notice"></a>
-## func [Notice](<https://github.com/kearth/klib/blob/master/klog/log.go#L138>)
+## func [Notice](<https://github.com/kearth/klib/blob/master/klog/log.go#L147>)
 
 ```go
 func Notice(ctx context.Context, v ...any)
@@ -110,7 +122,7 @@ func Notice(ctx context.Context, v ...any)
 Notice 打印日志
 
 <a name="Panic"></a>
-## func [Panic](<https://github.com/kearth/klib/blob/master/klog/log.go#L153>)
+## func [Panic](<https://github.com/kearth/klib/blob/master/klog/log.go#L162>)
 
 ```go
 func Panic(ctx context.Context, v ...any)
@@ -118,14 +130,45 @@ func Panic(ctx context.Context, v ...any)
 
 Panic 打印日志
 
+<a name="Print"></a>
+## func [Print](<https://github.com/kearth/klib/blob/master/klog/log.go#L167>)
+
+```go
+func Print(ctx context.Context, v ...any)
+```
+
+Print 打印日志
+
 <a name="Warn"></a>
-## func [Warn](<https://github.com/kearth/klib/blob/master/klog/log.go#L143>)
+## func [Warn](<https://github.com/kearth/klib/blob/master/klog/log.go#L152>)
 
 ```go
 func Warn(ctx context.Context, v ...any)
 ```
 
 Warn 打印警告级日志（原 Warning 重命名，对齐 glog 命名）
+
+<a name="Color"></a>
+## type [Color](<https://github.com/kearth/klib/blob/master/klog/color_print.go#L10>)
+
+Color 颜色
+
+```go
+type Color int
+```
+
+<a name="Yellow"></a>
+
+```go
+var (
+    Yellow  Color = Color(glog.COLOR_YELLOW)
+    Green   Color = Color(glog.COLOR_GREEN)
+    Cyan    Color = Color(glog.COLOR_CYAN)
+    Magenta Color = Color(glog.COLOR_MAGENTA)
+    Red     Color = Color(glog.COLOR_RED)
+    HiRed   Color = Color(glog.COLOR_HI_RED)
+)
+```
 
 <a name="Log"></a>
 ## type [Log](<https://github.com/kearth/klib/blob/master/klog/log.go#L54-L61>)
@@ -144,7 +187,7 @@ type Log struct {
 ```
 
 <a name="Log.String"></a>
-### func \(\*Log\) [String](<https://github.com/kearth/klib/blob/master/klog/log.go#L95>)
+### func \(\*Log\) [String](<https://github.com/kearth/klib/blob/master/klog/log.go#L104>)
 
 ```go
 func (l *Log) String() string

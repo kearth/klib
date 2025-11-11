@@ -212,3 +212,12 @@ func TestDefaultHandler(t *testing.T) {
 	assert.Contains(t, result, "[INFO]")
 	assert.Contains(t, result, "handlertest")
 }
+
+func TestColorPrint(t *testing.T) {
+	t.Parallel()
+	ctx := kctx.New()
+	Init()
+	Print(ctx, "plain ", "log")
+	ColorPrint(ctx, Yellow, "yellow ", "log")
+	Notice(ctx, "green ", "log")
+}
