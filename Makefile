@@ -153,7 +153,7 @@ define upgrade_version
 	sed -i '' -E "s/return \"v?[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_TAG\"/" $(VERSION_FILE) ; \
 	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; \
 	git add $(VERSION_FILE) ; \
-	git commit -m "chore: bump version to $$NEW_TAG" ; \
+	git commit -m "$$NEW_TAG" ; \
 	git tag -a $$NEW_TAG -m "Release $$NEW_TAG" ; \
 	git push origin $(DEFAULT_BRANCH) ; \
 	git push origin $$NEW_TAG ; \

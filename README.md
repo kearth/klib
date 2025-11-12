@@ -1,8 +1,9 @@
 # Klib
 
-![GitHub Stars](https://img.shields.io/github/stars/kearth/klib.svg?style=flat-square)
-![GitHub Forks](https://img.shields.io/github/forks/kearth/klib.svg?style=flat-square)
-![GitHub License](https://img.shields.io/github/license/kearth/klib.svg?style=flat-square)
+[![Go Reference](https://pkg.go.dev/badge/github.com/kearth/klib.svg)](https://pkg.go.dev/github.com/kearth/klib?tab=doc)
+[![GitHub License](https://img.shields.io/github/license/kearth/klib.svg?style=flat-square)](https://github.com/kearth/klib/blob/master/LICENSE)
+[![Release](https://img.shields.io/github/release/kearth/klib.svg?style=flat-square)](https://github.com/kearth/klib/releases)
+
 
 Klib 是一个专为个人学习目的而创建的Go语言库。它的主要目标是提供一些更加方便的用法，以便于您更轻松地学习和使用Go编程语言。
 
