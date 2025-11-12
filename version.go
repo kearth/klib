@@ -1,5 +1,5 @@
 package klib
 
 func Version() string {
-	return ""
+	return "v0.0.6"
 }
