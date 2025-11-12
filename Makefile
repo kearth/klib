@@ -150,7 +150,6 @@ define upgrade_version
 		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
 		exit 1; \
 	fi ; \
-	# Mac/Linux 兼容说明：sed 命令若报错，Linux 需删除 -i 后的 ''（改为 sed -i -E）
 	sed -i '' -E "s/return \"v?[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_TAG\"/" $(VERSION_FILE) ; \
 	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; \
 	git add $(VERSION_FILE) ; \
