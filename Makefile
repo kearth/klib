@@ -107,6 +107,101 @@ clean:
 	rm -rf $(DOCS_DIR)/*.md
 	go clean
 
+# --------------- GitHub Release 管理 ---------------
+# 创建 GitHub Release（需先打 Tag，支持自动构建产物+上传）
+# 用法：make release VERSION=v0.1.0 [BUILD_BIN=true]
+# - VERSION：必填，需与已存在的本地/远程 Tag 一致（如 v0.1.0）
+# - BUILD_BIN：可选，true 则自动构建跨平台二进制并上传（默认不上传）
+release:
+	@# 校验 gh 是否安装
+	if ! command -v gh >/dev/null 2>&1; then \
+		echo "❌ 未安装 GitHub CLI（gh），请先执行 'make install-gh' 安装"; \
+		exit 1; \
+	fi
+	@# 校验 gh 是否已登录
+	if ! gh auth status --repo $(MODULE) >/dev/null 2>&1; then \
+		echo "❌ gh 未登录或无仓库权限，请执行 'gh auth login' 登录授权"; \
+		exit 1; \
+	fi
+	@# 校验版本号必填
+	if [ -z "$(VERSION)" ]; then \
+		echo "❌ 请指定版本号，格式: make release VERSION=v0.1.0"; \
+		exit 1; \
+	fi
+	@# 校验版本号格式
+	if ! echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
+		echo "❌ 版本号格式错误，需符合语义化版本（如 v0.1.0、v1.2.3-beta）"; \
+		exit 1; \
+	fi
+	@# 校验 Tag 是否存在（本地+远程）
+	if ! git rev-parse $(VERSION) >/dev/null 2>&1; then \
+		echo "❌ 本地不存在 Tag $(VERSION)，请先执行 make tag VERSION=$(VERSION) 创建"; \
+		exit 1; \
+	fi
+	if ! git ls-remote --tags origin $(VERSION) >/dev/null 2>&1; then \
+		echo "❌ 远程不存在 Tag $(VERSION)，请先执行 make push-tag VERSION=$(VERSION) 推送"; \
+		exit 1; \
+	fi
+	@# 生成 Release 描述（默认读取 CHANGELOG.md，无则用默认描述）
+	RELEASE_NOTES="" ; \
+	if [ -f "CHANGELOG.md" ]; then \
+		# 提取当前版本的变更记录（需 CHANGELOG.md 按语义化格式编写）
+		RELEASE_NOTES=$$(sed -n "/## $(VERSION)/,/## /p" CHANGELOG.md | sed '/## /d' | sed '1d'); \
+	else \
+		RELEASE_NOTES="Release $(VERSION)"; \
+	fi
+	@# 创建 GitHub Release（--draft 表示草稿，去掉则直接发布）
+	echo "🚀 开始创建 GitHub Release: $(VERSION)"
+	gh release create $(VERSION) \
+		--title "$(PROJECT_NAME) $(VERSION)" \
+		--notes "$$RELEASE_NOTES" \
+		--repo $(MODULE)  # 关联你的仓库（如 github.com/kearth/klib）
+	@echo "🎉 GitHub Release 创建完成！"
+	@echo "🔗 查看地址：https://github.com/kearth/klib/releases/tag/$(VERSION)"
+
+# 查看已发布的 Release
+list-releases:
+	@echo "📋 已发布的 GitHub Release："
+	gh release list --repo $(MODULE)
+
+
+# --------------- 依赖安装（新增）---------------
+# 安装 GitHub CLI（gh）：自动检测系统，无则安装
+install-gh:
+	@echo "🔍 检查是否已安装 GitHub CLI（gh）..."
+	@if ! command -v gh >/dev/null 2>&1; then \
+		echo "❌ 未找到 gh，开始安装..."; \
+		UNAME_S=$$(uname -s); \
+		if [ "$$UNAME_S" = "Darwin" ]; then \
+			if command -v brew >/dev/null 2>&1; then \
+				brew install gh; \
+			else \
+				echo "❌ 未找到 Homebrew，请先安装 Homebrew：/bin/bash -c \"$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""; \
+				exit 1; \
+			fi; \
+		elif [ "$$UNAME_S" = "Linux" ]; then \
+			if command -v apt >/dev/null 2>&1; then \
+				sudo apt update && sudo apt install -y gh; \
+			elif command -v dnf >/dev/null 2>&1; then \
+				sudo dnf install -y gh; \
+			elif command -v yum >/dev/null 2>&1; then \
+				sudo yum install -y gh; \
+			elif command -v pacman >/dev/null 2>&1; then \
+				sudo pacman -S --noconfirm gh; \
+			else \
+				echo "❌ 不支持的 Linux 包管理器，请手动安装 gh：https://cli.github.com/manual/installation"; \
+				exit 1; \
+			fi; \
+		elif [ "$$UNAME_S" = "Windows_NT" ]; then \
+			echo "ℹ️ Windows 系统请通过 Chocolatey 安装：choco install gh"; \
+			echo "或手动下载：https://github.com/cli/cli/releases/latest/download/gh_windows_amd64.msi"; \
+			exit 1; \
+		fi; \
+		echo "✅ gh 安装完成！请执行 'gh auth login' 登录授权"; \
+	else \
+		echo "✅ gh 已安装（版本：$$(gh --version | grep -E 'gh version' | awk '{print $$3}')）"; \
+	fi
+
 # 帮助信息
 help:
 	@echo "可用命令:"
@@ -118,6 +213,10 @@ help:
 	@echo "  版本管理（手动打Tag，兼容旧用法）:"
 	@echo "    make tag VERSION=vX.Y.Z  创建本地版本Tag"
 	@echo "    make push-tag VERSION=vX.Y.Z  推送Tag至远程"
+	@echo "  GitHub Release 管理（需先执行 make install-gh + gh auth login）:"
+	@echo "    make install-gh       安装GitHub CLI（gh）工具"
+	@echo "    make release VERSION=vX.Y.Z "
+	@echo "    make list-releases    查看所有已发布的GitHub Release"
 	@echo "  文档相关:"
 	@echo "    make install-doc-tool  安装文档生成工具"
 	@echo "    make gen-docs         生成所有模块文档"
