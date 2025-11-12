@@ -9,11 +9,38 @@ KLOG_DOC := $(DOCS_DIR)/klog.md
 KCTX_DOC := $(DOCS_DIR)/kctx.md
 KERR_DOC := $(DOCS_DIR)/kerr.md
 KUTIL_DOC := $(DOCS_DIR)/kutil.md
+KUNIT_DOC := $(DOCS_DIR)/kunit.md
+
+# 版本管理核心配置
+VERSION_FILE := version.go  # 版本文件路径
+DEFAULT_BRANCH := master      # 仓库默认分支（根据实际调整）
 
 # --------------- 版本管理（打 Tag）---------------
-# 显示当前版本（最后一个 Tag）
+# 显示当前版本（从 version.go 提取代码版本 + 从Git提取最新Tag）
+# 逻辑：1. 提取版本文件中的版本 2. 容错处理 3. 读取Git Tag 4. 格式化输出
 version:
-	@echo "当前最新版本: $(shell git describe --abbrev=0 --tags 2>/dev/null || echo '无版本Tag')"
+	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/') ; \
+	if [ -z "$$CODE_VERSION" ]; then \
+		CODE_VERSION="未知（版本文件异常）"; \
+	fi ; \
+	TAG_VERSION=$$(git describe --abbrev=0 --tags 2>/dev/null || echo "无版本Tag") ; \
+	echo "==================== 版本信息 ===================="; \
+	echo "当前代码版本: v$$CODE_VERSION"; \
+	echo "当前最新Tag:  $$TAG_VERSION"; \
+	echo "==================================================";
+
+
+# 新增：语义化版本升级（补丁版本：修复bug，vX.Y.Z → vX.Y.Z+1）
+patch:
+	@$(call upgrade_version,patch)
+
+# 新增：语义化版本升级（次版本：新增兼容功能，vX.Y.Z → vX.Y+1.0）
+minor:
+	@$(call upgrade_version,minor)
+
+# 新增：语义化版本升级（主版本：不兼容变更，vX.Y.Z → vX+1.0.0）
+major:
+	@$(call upgrade_version,major)
 
 # 打新 Tag（示例：make tag VERSION=v0.1.0）
 # 支持语义化版本（如 v0.1.0、v1.2.3-beta）
@@ -57,6 +84,8 @@ gen-docs:
 	gomarkdoc -o $(KERR_DOC) $(MODULE)/kerr
 	# 生成 kutil 模块文档
 	gomarkdoc -o $(KUTIL_DOC) $(MODULE)/kutil
+	# 生成 kunit 模块文档
+	gomarkdoc -o $(KUNIT_DOC) $(MODULE)/kunit
 	@echo "文档生成完成"
 
 # 查看文档（本地预览）
@@ -80,15 +109,57 @@ clean:
 # 帮助信息
 help:
 	@echo "可用命令:"
-	@echo "  make version          显示当前最新版本"
-	@echo "  make tag VERSION=vX.Y.Z  创建本地版本Tag"
-	@echo "  make push-tag VERSION=vX.Y.Z  推送Tag至远程"
-	@echo "  make install-doc-tool  安装文档生成工具"
-	@echo "  make gen-docs         生成所有模块文档"
-	@echo "  make view-docs        打开文档目录预览"
-	@echo "  make test             运行测试（含race检测）"
-	@echo "  make clean            清理文档和临时文件"
-	@echo "  make help             显示帮助信息"
+	@echo "  版本管理（推荐自动升级）:"
+	@echo "    make version          显示当前代码版本和最新Tag"
+	@echo "    make patch            升级补丁版本（vX.Y.Z → vX.Y.Z+1）"
+	@echo "    make minor            升级次版本（vX.Y.Z → vX.Y+1.0）"
+	@echo "    make major            升级主版本（vX.Y.Z → vX+1.0.0）"
+	@echo "  版本管理（手动打Tag，兼容旧用法）:"
+	@echo "    make tag VERSION=vX.Y.Z  创建本地版本Tag"
+	@echo "    make push-tag VERSION=vX.Y.Z  推送Tag至远程"
+	@echo "  文档相关:"
+	@echo "    make install-doc-tool  安装文档生成工具"
+	@echo "    make gen-docs         生成所有模块文档"
+	@echo "    make view-docs        打开文档目录预览"
+	@echo "  其他:"
+	@echo "    make test             运行测试（含race检测）"
+	@echo "    make clean            清理文档和临时文件"
+	@echo "    make help             显示帮助信息"
 
 # 默认命令：显示帮助
 .DEFAULT_GOAL := help
+
+# --------------- 内部函数：版本升级核心逻辑（无需修改）---------------
+define upgrade_version
+	# 1. 从 version.go 提取当前版本（去除 v 前缀）
+	CURRENT_VERSION=$$(grep -E 'return "' $(VERSION_FILE) | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/') ; \
+	if [ -z "$$CURRENT_VERSION" ]; then \
+		echo "错误：未在 $(VERSION_FILE) 中找到有效版本号"; \
+		exit 1; \
+	fi ; \
+	# 2. 解析主/次/补丁版本号
+	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" ; \
+	# 3. 根据升级类型计算新版本
+	case "$1" in \
+		major) NEW_MAJOR=$$((MAJOR+1)); NEW_MINOR=0; NEW_PATCH=0 ;; \
+		minor) NEW_MAJOR=$$MAJOR; NEW_MINOR=$$((MINOR+1)); NEW_PATCH=0 ;; \
+		patch) NEW_MAJOR=$$MAJOR; NEW_MINOR=$$MINOR; NEW_PATCH=$$((PATCH+1)) ;; \
+	esac ; \
+	NEW_VERSION="$$NEW_MAJOR.$$NEW_MINOR.$$NEW_PATCH" ; \
+	NEW_TAG="v$$NEW_VERSION" ; \
+	# 4. 检查工作区是否干净（避免覆盖未提交变更）
+	if ! git diff --quiet --exit-code; then \
+		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
+		exit 1; \
+	fi ; \
+	# 5. 替换 version.go 中的版本号
+	sed -i '' -E "s/return \"[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_VERSION\"/" $(VERSION_FILE) ; \
+	# 6. Git 提交+打Tag+推送
+	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; \
+	git add $(VERSION_FILE) ; \
+	git commit -m "chore: bump version to $$NEW_TAG" ; \
+	git tag -a $$NEW_TAG -m "Release $$NEW_TAG" ; \
+	git push origin $(DEFAULT_BRANCH) ; \
+	git push origin $$NEW_TAG ; \
+	echo "✅ 已完成：提交代码 + 推送Tag $$NEW_TAG 至远程仓库" ;
+endef

@@ -1,10 +1,10 @@
-# GoLib 学习库
+# Klib
 
-![GitHub Stars](https://img.shields.io/github/stars/yourusername/golib.svg?style=flat-square)
-![GitHub Forks](https://img.shields.io/github/forks/yourusername/golib.svg?style=flat-square)
-![GitHub License](https://img.shields.io/github/license/yourusername/golib.svg?style=flat-square)
+![GitHub Stars](https://img.shields.io/github/stars/kearth/klib.svg?style=flat-square)
+![GitHub Forks](https://img.shields.io/github/forks/kearth/klib.svg?style=flat-square)
+![GitHub License](https://img.shields.io/github/license/kearth/klib.svg?style=flat-square)
 
-GoLib 学习库是一个专为个人学习目的而创建的Go语言库。它的主要目标是提供一些更加方便的用法，以便于您更轻松地学习和使用Go编程语言。
+Klib 是一个专为个人学习目的而创建的Go语言库。它的主要目标是提供一些更加方便的用法，以便于您更轻松地学习和使用Go编程语言。
 
 ## 特性
 
@@ -15,12 +15,32 @@ GoLib 学习库是一个专为个人学习目的而创建的Go语言库。它的
 ## 使用示例
 
 ```go
-import "github.com/yourusername/golib"
+import (
+    "github.com/kearth/klib/kctx"
+	"github.com/kearth/klib/klog"
+	"github.com/kearth/klib/kutil"
+)
 
 func main() {
-    result := golib.DoSomething()
-    fmt.Println(result)
+	// 初始化日志
+	ctx := kctx.New()
+	klog.Init()
+
+	// 测试条件
+	condition := 5
+	fn := kutil.If[func()](condition == 5, func() {
+		klog.ColorPrint(ctx, klog.Cyan, "条件为5")
+	}, func() {
+		klog.ColorPrint(ctx, klog.Cyan, "条件不为5")
+	})
+
+	// 执行函数
+	fn()
 }
+```
+结果：
+```
+条件为5
 ```
 
 ## 安装
@@ -36,3 +56,5 @@ go get -u github.com/kearth/klib
 - [kctx 上下文管理](docs/kctx.md)
 - [kerr 错误处理](docs/kerr.md)
 - [kutil 工具函数](docs/kutil.md)
+- [kunit 单元容器](docs/kunit.md)
+- [klog 日志管理](docs/klog.md)
