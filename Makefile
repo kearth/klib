@@ -19,13 +19,14 @@ DEFAULT_BRANCH := master      # 仓库默认分支（根据实际调整）
 # 显示当前版本（从 version.go 提取代码版本 + 从Git提取最新Tag）
 # 逻辑：1. 提取版本文件中的版本 2. 容错处理 3. 读取Git Tag 4. 格式化输出
 version:
-	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/') ; \
+	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); \
 	if [ -z "$$CODE_VERSION" ]; then \
 		CODE_VERSION="未知（版本文件异常）"; \
 	fi ; \
 	TAG_VERSION=$$(git describe --abbrev=0 --tags 2>/dev/null || echo "无版本Tag") ; \
+	FORMATTED_VERSION=$$(echo "$$CODE_VERSION" | sed 's/^v//') ; \
 	echo "==================== 版本信息 ===================="; \
-	echo "当前代码版本: v$$CODE_VERSION"; \
+	echo "当前代码版本: $$CODE_VERSION"; \
 	echo "当前最新Tag:  $$TAG_VERSION"; \
 	echo "==================================================";
 
@@ -130,16 +131,14 @@ help:
 .DEFAULT_GOAL := help
 
 # --------------- 内部函数：版本升级核心逻辑（无需修改）---------------
+# --------------- 内部函数：版本升级核心逻辑（无shell注释，避免干扰）---------------
 define upgrade_version
-	# 1. 从 version.go 提取当前版本（去除 v 前缀）
-	CURRENT_VERSION=$$(grep -E 'return "' $(VERSION_FILE) | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/') ; \
+	CURRENT_VERSION=$$(grep -E 'return "' $(VERSION_FILE) | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/' | sed 's/^v//') ; \
 	if [ -z "$$CURRENT_VERSION" ]; then \
 		echo "错误：未在 $(VERSION_FILE) 中找到有效版本号"; \
 		exit 1; \
 	fi ; \
-	# 2. 解析主/次/补丁版本号
 	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" ; \
-	# 3. 根据升级类型计算新版本
 	case "$1" in \
 		major) NEW_MAJOR=$$((MAJOR+1)); NEW_MINOR=0; NEW_PATCH=0 ;; \
 		minor) NEW_MAJOR=$$MAJOR; NEW_MINOR=$$((MINOR+1)); NEW_PATCH=0 ;; \
@@ -147,14 +146,12 @@ define upgrade_version
 	esac ; \
 	NEW_VERSION="$$NEW_MAJOR.$$NEW_MINOR.$$NEW_PATCH" ; \
 	NEW_TAG="v$$NEW_VERSION" ; \
-	# 4. 检查工作区是否干净（避免覆盖未提交变更）
 	if ! git diff --quiet --exit-code; then \
 		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
 		exit 1; \
 	fi ; \
-	# 5. 替换 version.go 中的版本号
-	sed -i '' -E "s/return \"[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_VERSION\"/" $(VERSION_FILE) ; \
-	# 6. Git 提交+打Tag+推送
+	# Mac/Linux 兼容说明：sed 命令若报错，Linux 需删除 -i 后的 ''（改为 sed -i -E）
+	sed -i '' -E "s/return \"v?[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_TAG\"/" $(VERSION_FILE) ; \
 	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; \
 	git add $(VERSION_FILE) ; \
 	git commit -m "chore: bump version to $$NEW_TAG" ; \
