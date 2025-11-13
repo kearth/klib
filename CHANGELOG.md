@@ -12,6 +12,10 @@
   - `Security`：安全相关修复
 
 ---
+## [v0.2.4] - 2025-11-13
+### Fixed
+- 修复 Make publish 不能自动获取版本问题
+
 ## [v0.2.3] - 2025-11-13
 ### Added
 - 新增 Makefile publish
