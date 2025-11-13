@@ -47,28 +47,32 @@ major:
 # 打新 Tag（示例：make tag VERSION=v0.1.0）
 # 支持语义化版本（如 v0.1.0、v1.2.3-beta）
 tag:
-	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); 
-	@if ! echo "$(CODE_VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
-		echo "版本号格式错误，需符合语义化版本（如 v0.1.0）"; \
+	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); \
+	echo "当前代码版本: $$CODE_VERSION"; \
+	if ! echo "$$CODE_VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
+		echo "❌ 版本号格式错误，需符合语义化版本（如 v0.1.0、v1.2.3-beta）"; \
 		exit 1; \
 	fi; \
-	@if ! git diff --quiet --exit-code; then \
-		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
+	if ! git diff --quiet --exit-code; then \
+		echo "❌ 工作区存在未提交的变更，请先提交或 stash"; \
 		exit 1; \
-	fi ; \
-	@echo "已创建本地Tag: $(CODE_VERSION)"
-	@git tag -a $(CODE_VERSION) -m "Release $(CODE_VERSION)"
-	@git push origin $$CODE_VERSION 
+	fi; \
+	git tag -a "$$CODE_VERSION" -m "Release $$CODE_VERSION"; \
+	git push origin "$$CODE_VERSION"; \
+	echo "✅ 已创建并推送 Tag: $$CODE_VERSION";
+
 	
 
 # 推送 Tag 到远程仓库
 push-tag:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "请指定版本号，格式: make push-tag VERSION=v0.1.0"; \
+	@VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); \
+	echo "当前代码版本: $$VERSION"; \
+	if ! echo "$$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
+		echo "❌ 版本号格式错误，需符合语义化版本（如 v0.1.0、v1.2.3-beta）"; \
 		exit 1; \
-	fi
-	@git push origin $(VERSION)
-	@echo "已推送Tag $(VERSION)至远程仓库"
+	fi; \
+	git push origin $(VERSION); \
+	echo "✅ 已创建并推送 Tag: $$VERSION";
 
 # --------------- 文档生成与更新 ---------------
 # 安装文档生成工具（gomarkdoc）
@@ -306,42 +310,16 @@ changelog:
 	if grep -q "## [$$NEW_VERSION]" CHANGELOG.md; then echo "⚠️ $$NEW_VERSION 已存在"; exit 0; fi; \
 	if ! grep -q "^---" CHANGELOG.md; then echo "---" >> CHANGELOG.md; fi; \
 	printf "%b" "/^---/a\n$$NEW_VERSION_BLOCK\n.\nw\nq\n" | ed -s CHANGELOG.md >/dev/null; \
-	echo "✅ CHANGELOG 更新成功：$$NEW_VERSION"; head -n 10 CHANGELOG.md | grep -E '##|\- ' | sed 's/^/ /'
+	echo "✅ CHANGELOG 更新成功：$$NEW_VERSION"; head -n 10 CHANGELOG.md | grep -E '##|\- ' | sed 's/^/ /'; \
+	git add -A ; \
+	git commit -m "Update CHANGELOG.md" ; 
+
+	
 
 # --------------- 快速 Commit 命令（简化提交操作）---------------
 # 定义通用 Commit 函数（内部使用，无需手动调用）
 # 注意：函数内部命令前加 @，抑制 Makefile 回显
 # 定义通用 Commit 函数（内部使用，无需手动调用）
-# commit_func: 参数为类型（如 feat/fix/chore）
-# define commit_func
-# 	@if [ -n "$$FILES" ]; then \
-# 		git add $$FILES; \
-# 		echo "ℹ️  已暂存文件：$$FILES"; \
-# 	else \
-# 		echo "ℹ️  未指定 FILES，将提交所有已暂存的更改"; \
-# 	fi; \
-# 	if [ -z "$$MSG" ]; then \
-# 		echo "❌ 请指定提交描述，格式：make commit-$(1) MSG=\"描述信息\""; \
-# 		exit 1; \
-# 	fi; \
-# 	MSG_LEN=$$(echo -n "$$MSG" | wc -m); \
-# 	if [ $$MSG_LEN -lt 5 ]; then \
-# 		echo "❌ 提交描述过短！至少 5 个字符（当前：$$MSG_LEN 个）"; \
-# 		exit 1; \
-# 	fi; \
-# 	COMMIT_MSG="$(1): $$MSG"; \
-# 	if git diff --cached --quiet; then \
-# 		echo "❌ 无暂存文件可提交！"; \
-# 		exit 1; \
-# 	fi; \
-# 	echo "📤 提交信息：$$COMMIT_MSG"; \
-# 	if git commit -m "$$COMMIT_MSG"; then \
-# 		echo "✅ 提交成功！"; \
-# 	else \
-# 		echo "❌ 提交失败，请检查错误信息"; \
-# 		exit 1; \
-# 	fi;
-# endef
 
 define commit_func
 	@COMMIT_MSG="$(1): $(filter-out $@,$(MAKECMDGOALS))"; \
@@ -399,7 +377,7 @@ commit-deprecated:## 废弃/移除功能
 commit-help:
 	@echo "📋 快速 Commit 命令使用说明"
 	@echo "=========================="
-	@echo "格式：make commit-<类型> MSG=\"描述信息\""
+	@echo "格式：make commit-<类型> \"描述信息\""
 	@echo "支持的类型及含义："
 	@echo "  commit-feat      新增功能（对应 CHANGELOG Added）"
 	@echo "  commit-fix       修复 Bug（对应 CHANGELOG Fixed）"
@@ -411,8 +389,7 @@ commit-help:
 	@echo "  commit-deprecated 标记弃用功能（对应 CHANGELOG Deprecated）"
 	@echo "=========================="
 	@echo "示例："
-	@echo "  make commit-feat MSG=\"新增跨平台二进制构建功能\""
-	@echo "  make commit-fix MSG=\"修复 gh 登录授权检测失败问题\""
-	@echo "  make commit-docs MSG=\"更新 CHANGELOG.md 格式说明\""
+	@echo "  make commit-feat \"跨平台二进制构建功能\""
+	@echo "  make commit-fix \"gh 登录授权检测失败问题\""
+	@echo "  make commit-docs \"CHANGELOG.md 格式说明\""
 	@echo "=========================="
-	@echo "注意：执行前需先执行 git add <文件> 暂存修改"
