@@ -67,20 +67,6 @@ tag:
 	git push origin "$$CODE_VERSION" || (echo "⚠️ 推送失败，请检查权限或远程状态" && exit 1); \
 	echo "✅ Tag 操作完成：$$CODE_VERSION";
 
-
-	
-
-# 推送 Tag 到远程仓库
-push-tag:
-	@VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); \
-	echo "当前代码版本: $$VERSION"; \
-	if ! echo "$$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
-		echo "❌ 版本号格式错误，需符合语义化版本（如 v0.1.0、v1.2.3-beta）"; \
-		exit 1; \
-	fi; \
-	git push origin $(VERSION); \
-	echo "✅ 已创建并推送 Tag: $$VERSION";
-
 # --------------- 文档生成与更新 ---------------
 # 安装文档生成工具（gomarkdoc）
 install-doc-tool:
@@ -124,8 +110,6 @@ clean:
 # --------------- GitHub Release 管理 ---------------
 # 创建 GitHub Release（需先打 Tag，支持自动构建产物+上传）
 # 用法：make release VERSION=v0.1.0 [BUILD_BIN=true]
-# - VERSION：必填，需与已存在的本地/远程 Tag 一致（如 v0.1.0）
-# - BUILD_BIN：可选，true 则自动构建跨平台二进制并上传（默认不上传）
 release:
 	@if ! command -v gh >/dev/null 2>&1; then \
 		echo "❌ 未安装 GitHub CLI（gh），请先执行 'make install-gh' 安装"; \
@@ -215,6 +199,10 @@ install-gh:
 		echo "✅ gh 已安装（版本：$$(gh --version | grep -E 'gh version' | awk '{print $$3}')）"; \
 	fi
 
+publish:
+	@make changelog
+	@make tag
+	@make release
 # 帮助信息
 help:
 	@echo "可用命令:"
@@ -223,9 +211,7 @@ help:
 	@echo "    make patch            升级补丁版本（vX.Y.Z → vX.Y.Z+1）"
 	@echo "    make minor            升级次版本（vX.Y.Z → vX.Y+1.0）"
 	@echo "    make major            升级主版本（vX.Y.Z → vX+1.0.0）"
-	@echo "  版本管理（手动打Tag，兼容旧用法）:"
-	@echo "    make tag VERSION=vX.Y.Z  创建本地版本Tag"
-	@echo "    make push-tag VERSION=vX.Y.Z  推送Tag至远程"
+	@echo "    make tag 创建本地版本Tag,推送Tag至远程, 格式: vX.Y.Z"
 	@echo "  GitHub Release 管理（需先执行 make install-gh + gh auth login）:"
 	@echo "    make install-gh       安装GitHub CLI（gh）工具"
 	@echo "    make release VERSION=vX.Y.Z "
@@ -238,6 +224,7 @@ help:
 	@echo "    make test             运行测试（含race检测）"
 	@echo "    make clean            清理文档和临时文件"
 	@echo "    make help             显示帮助信息"
+	@echo "    make publish          发布新的版本（自动升级、创建Tag、发布Release）"
 	@echo "  快速 Commit 命令（简化+规范提交）:"
 	@echo "    make commit-<类型> MSG=\"描述\"  快速提交（如：make commit-feat MSG=\"新增功能\"）"
 	@echo "    make commit-help          查看快速 Commit 命令说明"
