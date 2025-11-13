@@ -225,6 +225,12 @@ help:
 	@echo "    make test             运行测试（含race检测）"
 	@echo "    make clean            清理文档和临时文件"
 	@echo "    make help             显示帮助信息"
+	@echo "  快速 Commit 命令（简化+规范提交）:"
+	@echo "    make commit-<类型> MSG=\"描述\"  快速提交（如：make commit-feat MSG=\"新增功能\"）"
+	@echo "    make commit-help          查看快速 Commit 命令说明"
+	@echo "  Git Commit 规范（强制提交格式）:"
+	@echo "    make install-commit-hooks  安装提交规范钩子（自动校验格式）"
+	@echo "    make uninstall-commit-hooks  卸载提交规范钩子"
 
 # 默认命令：显示帮助
 .DEFAULT_GOAL := help
@@ -258,3 +264,136 @@ define upgrade_version
 	git push origin $$NEW_TAG ; \
 	echo "✅ 已完成：提交代码 + 推送Tag $$NEW_TAG 至远程仓库" ;
 endef
+
+
+# --------------- CHANGELOG 自动管理（优化：自动补中文前缀）---------------
+changelog:
+	@export LC_ALL=en_US.UTF-8; export LANG=en_US.UTF-8; \
+	VERSION_FILE=version.go; \
+	echo "🔍 读取 $$VERSION_FILE 中的最新版本号..."; \
+	NEW_VERSION=$$(grep -E 'return "' $$VERSION_FILE | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/' | tr -d '"'); \
+	echo "✅ 最新版本：$$NEW_VERSION"; \
+	if [ -z "$$NEW_VERSION" ] || ! echo "$$NEW_VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then echo "❌ version 解析失败"; exit 1; fi; \
+	CURRENT_DATE=$$(date +%Y-%m-%d); \
+	echo "📅 当前日期：$$CURRENT_DATE"; \
+	LAST_TAG=$$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null); COMMIT_RANGE=$$LAST_TAG..HEAD; \
+	extract_commits() { type=$$1; case $$type in feat) prefix="- 新增";; fix) prefix="- 修复";; chore) prefix="- 优化";; refactor) prefix="- 重构/移除";; docs) prefix="- 更新";; test) prefix="- 完善";; security) prefix="- 加固";; deprecated) prefix="- 标记弃用";; esac; git log $$COMMIT_RANGE --pretty=format:"%s" --grep="^$$type:" 2>/dev/null | sed "s#^$$type: ##" | sort -u | grep -v '^$$' | sed "s#^#$$prefix #"; }; \
+	ADDED=$$(extract_commits feat); \
+	echo "📝 新增功能：$$ADDED"; \
+	CHANGED=$$(printf "%s\n%s\n%s" "$$(extract_commits chore)" "$$(extract_commits docs)" "$$(extract_commits test)" | sort -u | grep -v '^$$'); \
+	echo "🔧 优化/更新：$$CHANGED"; \
+	FIXED=$$(extract_commits fix); \
+	echo "🔧 修复问题：$$FIXED"; \
+	REMOVED=$$(extract_commits refactor); \
+	echo "🔧 重构/移除：$$REMOVED"; \
+	SECURITY=$$(extract_commits security); \
+	echo "🔧 加固：$$SECURITY"; \
+	DEPRECATED=$$(extract_commits deprecated); \
+	echo "🔧 标记弃用：$$DEPRECATED"; \
+	SECTIONS=""; \
+	if [ -n "$$ADDED" ]; then SECTIONS="$$SECTIONS\n### Added\n$$ADDED\n"; fi; \
+	if [ -n "$$CHANGED" ]; then SECTIONS="$$SECTIONS\n### Changed\n$$CHANGED\n"; fi; \
+	if [ -n "$$FIXED" ]; then SECTIONS="$$SECTIONS\n### Fixed\n$$FIXED\n"; fi; \
+	if [ -n "$$REMOVED" ]; then SECTIONS="$$SECTIONS\n### Removed\n$$REMOVED\n"; fi; \
+	if [ -n "$$SECURITY" ]; then SECTIONS="$$SECTIONS\n### Security\n$$SECURITY\n"; fi; \
+	if [ -n "$$DEPRECATED" ]; then SECTIONS="$$SECTIONS\n### Deprecated\n$$DEPRECATED\n"; fi; \
+	if [ -z "$$SECTIONS" ]; then \
+		echo "ℹ️ $$NEW_VERSION 无显著变更，不生成版本块"; \
+		exit 0; \
+	fi; \
+	NEW_VERSION_BLOCK=$$(printf "## [%s] - %s%s" "$$NEW_VERSION" "$$CURRENT_DATE" "$$SECTIONS");\
+	echo "📝 新变更记录：$$NEW_VERSION_BLOCK"; \
+	if [ ! -f CHANGELOG.md ]; then echo -e "# CHANGELOG\n所有显著的变更都会记录在本文件中。\n\n---\n" > CHANGELOG.md; fi; \
+	echo "🔍 检查 $$NEW_VERSION 是否已存在于 CHANGELOG.md..."; \
+	if [ -f CHANGELOG.md ] && grep -q "$$NEW_VERSION" CHANGELOG.md; then \
+		echo "⚠️ $$NEW_VERSION 的变更记录已存在，无需重复生成"; \
+		exit 0; \
+	fi; \
+	if grep -q "## [$$NEW_VERSION]" CHANGELOG.md; then echo "⚠️ $$NEW_VERSION 已存在"; exit 0; fi; \
+	if ! grep -q "^---" CHANGELOG.md; then echo "---" >> CHANGELOG.md; fi; \
+	printf "%b" "/^---/a\n$$NEW_VERSION_BLOCK\n.\nw\nq\n" | ed -s CHANGELOG.md >/dev/null; \
+	echo "✅ CHANGELOG 更新成功：$$NEW_VERSION"; head -n 10 CHANGELOG.md | grep -E '##|\- ' | sed 's/^/ /'
+
+# --------------- 快速 Commit 命令（简化提交操作）---------------
+# 定义通用 Commit 函数（内部使用，无需手动调用）
+# 注意：函数内部命令前加 @，抑制 Makefile 回显
+# 定义通用 Commit 函数（内部使用，无需手动调用）
+# commit_func: 参数为类型（如 feat/fix/chore）
+define commit_func
+	@if [ -n "$$FILES" ]; then \
+		git add $$FILES; \
+		echo "ℹ️  已暂存文件：$$FILES"; \
+	else \
+		echo "ℹ️  未指定 FILES，将提交所有已暂存的更改"; \
+	fi; \
+	if [ -z "$$MSG" ]; then \
+		echo "❌ 请指定提交描述，格式：make commit-$(1) MSG=\"描述信息\""; \
+		exit 1; \
+	fi; \
+	MSG_LEN=$$(echo -n "$$MSG" | wc -m); \
+	if [ $$MSG_LEN -lt 5 ]; then \
+		echo "❌ 提交描述过短！至少 5 个字符（当前：$$MSG_LEN 个）"; \
+		exit 1; \
+	fi; \
+	COMMIT_MSG="$(1): $$MSG"; \
+	if git diff --cached --quiet; then \
+		echo "❌ 无暂存文件可提交！"; \
+		exit 1; \
+	fi; \
+	echo "📤 提交信息：$$COMMIT_MSG"; \
+	if git commit -m "$$COMMIT_MSG"; then \
+		echo "✅ 提交成功！"; \
+	else \
+		echo "❌ 提交失败，请检查错误信息"; \
+		exit 1; \
+	fi;
+endef
+
+# -----------------------------
+# 🧩 具体提交类型命令
+# -----------------------------
+commit-feat:      ## 新功能提交
+	@$(call commit_func,feat)
+
+commit-fix:       ## 修复问题提交
+	@$(call commit_func,fix)
+
+commit-chore:     ## 杂项提交（构建/依赖/配置）
+	@$(call commit_func,chore)
+
+commit-refactor:  ## 代码重构
+	@$(call commit_func,refactor)
+
+commit-docs:      ## 文档更新
+	@$(call commit_func,docs)
+
+commit-test:      ## 测试相关
+	@$(call commit_func,test)
+
+commit-security:  ## 安全修复
+	@$(call commit_func,security)
+
+commit-deprecated:## 废弃/移除功能
+	@$(call commit_func,deprecated)
+
+# 快速提交帮助
+commit-help:
+	@echo "📋 快速 Commit 命令使用说明"
+	@echo "=========================="
+	@echo "格式：make commit-<类型> MSG=\"描述信息\""
+	@echo "支持的类型及含义："
+	@echo "  commit-feat      新增功能（对应 CHANGELOG Added）"
+	@echo "  commit-fix       修复 Bug（对应 CHANGELOG Fixed）"
+	@echo "  commit-chore     功能优化/构建配置变更（对应 CHANGELOG Changed）"
+	@echo "  commit-refactor  代码重构/移除功能（对应 CHANGELOG Removed）"
+	@echo "  commit-docs      文档更新（对应 CHANGELOG Changed）"
+	@echo "  commit-test      测试相关（新增/修改测试用例）"
+	@echo "  commit-security  安全相关修复（对应 CHANGELOG Security）"
+	@echo "  commit-deprecated 标记弃用功能（对应 CHANGELOG Deprecated）"
+	@echo "=========================="
+	@echo "示例："
+	@echo "  make commit-feat MSG=\"新增跨平台二进制构建功能\""
+	@echo "  make commit-fix MSG=\"修复 gh 登录授权检测失败问题\""
+	@echo "  make commit-docs MSG=\"更新 CHANGELOG.md 格式说明\""
+	@echo "=========================="
+	@echo "注意：执行前需先执行 git add <文件> 暂存修改"
