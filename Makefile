@@ -2,6 +2,7 @@
 PROJECT_NAME := klib
 # 模块路径（替换为你的实际模块路径）
 MODULE := github.com/kearth/klib
+SHORT_MODULE := kearth/klib
 # 文档生成目录
 DOCS_DIR := docs
 # 默认日志包文档生成路径（可根据模块扩展）
@@ -46,17 +47,19 @@ major:
 # 打新 Tag（示例：make tag VERSION=v0.1.0）
 # 支持语义化版本（如 v0.1.0、v1.2.3-beta）
 tag:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "请指定版本号，格式: make tag VERSION=v0.1.0"; \
-		exit 1; \
-	fi
-	@if ! echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
+	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); 
+	@if ! echo "$(CODE_VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
 		echo "版本号格式错误，需符合语义化版本（如 v0.1.0）"; \
 		exit 1; \
-	fi
-	@git tag -a $(VERSION) -m "Release $(VERSION)"
-	@echo "已创建本地Tag: $(VERSION)"
-	@echo "提示: 推送至远程仓库执行: make push-tag VERSION=$(VERSION)"
+	fi; \
+	@if ! git diff --quiet --exit-code; then \
+		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
+		exit 1; \
+	fi ; \
+	@echo "已创建本地Tag: $(CODE_VERSION)"
+	@git tag -a $(CODE_VERSION) -m "Release $(CODE_VERSION)"
+	@git push origin $$CODE_VERSION 
+	
 
 # 推送 Tag 到远程仓库
 push-tag:
@@ -144,13 +147,18 @@ release:
 			RELEASE_NOTES="Release $(VERSION)"; \
 		fi; \
 	fi; \
-	echo "变更记录：$$RELEASE_NOTES"; \
 	echo "🚀 开始创建 GitHub Release: $(VERSION)" ;\
+	echo "仓库: $(SHORT_MODULE)" ;\
+	echo "标题: $(PROJECT_NAME) $(VERSION)" ;\
+	echo "变更记录：$$RELEASE_NOTES" ;\
+	TMP_NOTES=$$(mktemp) ;\
+	echo "$$RELEASE_NOTES" > "$$TMP_NOTES" ;\
 	gh release create $(VERSION) \
 		--title "$(PROJECT_NAME) $(VERSION)" \
-		--notes "$$RELEASE_NOTES" \
-		--repo $(MODULE) \
-	echo "🎉 GitHub Release 创建完成！" \
+		--notes-file "$$TMP_NOTES" \
+		--repo $(SHORT_MODULE);\
+	rm -f "$$TMP_NOTES" ;\
+	echo "🎉 GitHub Release 创建完成！" ;\
 	echo "🔗 查看地址：https://github.com/kearth/klib/releases/tag/$(VERSION)"
 
 # 查看已发布的 Release
@@ -245,18 +253,10 @@ define upgrade_version
 	esac ; \
 	NEW_VERSION="$$NEW_MAJOR.$$NEW_MINOR.$$NEW_PATCH" ; \
 	NEW_TAG="v$$NEW_VERSION" ; \
-	if ! git diff --quiet --exit-code; then \
-		echo "错误：工作区存在未提交的变更，请先提交或 stash"; \
-		exit 1; \
-	fi ; \
 	sed -i '' -E "s/return \"v?[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_TAG\"/" $(VERSION_FILE) ; \
-	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; \
 	git add $(VERSION_FILE) ; \
-	git commit -m "$$NEW_TAG" ; \
-	git tag -a $$NEW_TAG -m "Release $$NEW_TAG" ; \
-	git push origin $(DEFAULT_BRANCH) ; \
-	git push origin $$NEW_TAG ; \
-	echo "✅ 已完成：提交代码 + 推送Tag $$NEW_TAG 至远程仓库" ;
+	git commit -m "$$NEW_TAG" ; 
+	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; 
 endef
 
 
@@ -313,27 +313,52 @@ changelog:
 # 注意：函数内部命令前加 @，抑制 Makefile 回显
 # 定义通用 Commit 函数（内部使用，无需手动调用）
 # commit_func: 参数为类型（如 feat/fix/chore）
+# define commit_func
+# 	@if [ -n "$$FILES" ]; then \
+# 		git add $$FILES; \
+# 		echo "ℹ️  已暂存文件：$$FILES"; \
+# 	else \
+# 		echo "ℹ️  未指定 FILES，将提交所有已暂存的更改"; \
+# 	fi; \
+# 	if [ -z "$$MSG" ]; then \
+# 		echo "❌ 请指定提交描述，格式：make commit-$(1) MSG=\"描述信息\""; \
+# 		exit 1; \
+# 	fi; \
+# 	MSG_LEN=$$(echo -n "$$MSG" | wc -m); \
+# 	if [ $$MSG_LEN -lt 5 ]; then \
+# 		echo "❌ 提交描述过短！至少 5 个字符（当前：$$MSG_LEN 个）"; \
+# 		exit 1; \
+# 	fi; \
+# 	COMMIT_MSG="$(1): $$MSG"; \
+# 	if git diff --cached --quiet; then \
+# 		echo "❌ 无暂存文件可提交！"; \
+# 		exit 1; \
+# 	fi; \
+# 	echo "📤 提交信息：$$COMMIT_MSG"; \
+# 	if git commit -m "$$COMMIT_MSG"; then \
+# 		echo "✅ 提交成功！"; \
+# 	else \
+# 		echo "❌ 提交失败，请检查错误信息"; \
+# 		exit 1; \
+# 	fi;
+# endef
+
 define commit_func
-	@if [ -n "$$FILES" ]; then \
-		git add $$FILES; \
-		echo "ℹ️  已暂存文件：$$FILES"; \
-	else \
-		echo "ℹ️  未指定 FILES，将提交所有已暂存的更改"; \
-	fi; \
-	if [ -z "$$MSG" ]; then \
-		echo "❌ 请指定提交描述，格式：make commit-$(1) MSG=\"描述信息\""; \
+	@COMMIT_MSG="$(1): $(filter-out $@,$(MAKECMDGOALS))"; \
+	if [ -z "$$COMMIT_MSG" ]; then \
+		echo "❌ 请提供提交描述，例如：make commit-$(1) 新增模块"; \
 		exit 1; \
 	fi; \
-	MSG_LEN=$$(echo -n "$$MSG" | wc -m); \
-	if [ $$MSG_LEN -lt 5 ]; then \
-		echo "❌ 提交描述过短！至少 5 个字符（当前：$$MSG_LEN 个）"; \
+	MSG_LEN=$$(echo -n "$$COMMIT_MSG" | wc -m); \
+	if [ $$MSG_LEN -lt 10 ]; then \
+		echo "❌ 提交描述过短！至少 10 个字符（当前：$$MSG_LEN 个）"; \
 		exit 1; \
 	fi; \
-	COMMIT_MSG="$(1): $$MSG"; \
-	if git diff --cached --quiet; then \
-		echo "❌ 无暂存文件可提交！"; \
-		exit 1; \
+	if git diff --cached --quiet && git diff --quiet; then \
+		echo "⚠️  无文件变更，将跳过提交"; \
+		exit 0; \
 	fi; \
+	git add -A; \
 	echo "📤 提交信息：$$COMMIT_MSG"; \
 	if git commit -m "$$COMMIT_MSG"; then \
 		echo "✅ 提交成功！"; \
