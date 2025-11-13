@@ -15,6 +15,8 @@
 ## [v0.1.2] - 2025-11-13
 ### Added
 - 新增 CHANGELOG.md 文件，记录版本变更历史
+- 新增 Makefile 的 changelog 相关能力和 release 版本发布能力
+
 
 
 
