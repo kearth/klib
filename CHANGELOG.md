@@ -12,6 +12,13 @@
   - `Security`：安全相关修复
 
 ---
+## [v0.2.3] - 2025-11-13
+### Added
+- 新增 Makefile publish
+
+### Fixed
+- 修复 Makefile 的命令
+
 ## [v0.2.2] - 2025-11-13
 ### Fixed
 - 修复 Makefile 的命令
