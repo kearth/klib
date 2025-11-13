@@ -113,51 +113,45 @@ clean:
 # - VERSION：必填，需与已存在的本地/远程 Tag 一致（如 v0.1.0）
 # - BUILD_BIN：可选，true 则自动构建跨平台二进制并上传（默认不上传）
 release:
-	@# 校验 gh 是否安装
-	if ! command -v gh >/dev/null 2>&1; then \
+	@if ! command -v gh >/dev/null 2>&1; then \
 		echo "❌ 未安装 GitHub CLI（gh），请先执行 'make install-gh' 安装"; \
 		exit 1; \
-	fi
-	@# 校验 gh 是否已登录
-	if ! gh auth status --repo $(MODULE) >/dev/null 2>&1; then \
+	fi; \
+	if ! gh auth status >/dev/null 2>&1; then \
 		echo "❌ gh 未登录或无仓库权限，请执行 'gh auth login' 登录授权"; \
 		exit 1; \
-	fi
-	@# 校验版本号必填
+	fi; \
 	if [ -z "$(VERSION)" ]; then \
 		echo "❌ 请指定版本号，格式: make release VERSION=v0.1.0"; \
 		exit 1; \
-	fi
-	@# 校验版本号格式
+	fi; \
 	if ! echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
 		echo "❌ 版本号格式错误，需符合语义化版本（如 v0.1.0、v1.2.3-beta）"; \
 		exit 1; \
-	fi
-	@# 校验 Tag 是否存在（本地+远程）
+	fi; \
 	if ! git rev-parse $(VERSION) >/dev/null 2>&1; then \
 		echo "❌ 本地不存在 Tag $(VERSION)，请先执行 make tag VERSION=$(VERSION) 创建"; \
 		exit 1; \
-	fi
+	fi; \
 	if ! git ls-remote --tags origin $(VERSION) >/dev/null 2>&1; then \
 		echo "❌ 远程不存在 Tag $(VERSION)，请先执行 make push-tag VERSION=$(VERSION) 推送"; \
 		exit 1; \
-	fi
-	@# 生成 Release 描述（默认读取 CHANGELOG.md，无则用默认描述）
+	fi; \
 	RELEASE_NOTES="" ; \
 	if [ -f "CHANGELOG.md" ]; then \
-		# 提取当前版本的变更记录（需 CHANGELOG.md 按语义化格式编写）
-		RELEASE_NOTES=$$(sed -n "/## $(VERSION)/,/## /p" CHANGELOG.md | sed '/## /d' | sed '1d'); \
-	else \
-		RELEASE_NOTES="Release $(VERSION)"; \
-	fi
-	@# 创建 GitHub Release（--draft 表示草稿，去掉则直接发布）
-	echo "🚀 开始创建 GitHub Release: $(VERSION)"
+		RELEASE_NOTES=$$(awk '/^## \['"$(VERSION)"'\]/{flag=1;next}/^## \[v/{flag=0}flag' CHANGELOG.md | sed '/^$$/d' | sed 's/^[[:space:]]*//'); \
+		if [ -z "$$RELEASE_NOTES" ]; then \
+			RELEASE_NOTES="Release $(VERSION)"; \
+		fi; \
+	fi; \
+	echo "变更记录：$$RELEASE_NOTES"; \
+	echo "🚀 开始创建 GitHub Release: $(VERSION)" ;\
 	gh release create $(VERSION) \
 		--title "$(PROJECT_NAME) $(VERSION)" \
 		--notes "$$RELEASE_NOTES" \
-		--repo $(MODULE)  # 关联你的仓库（如 github.com/kearth/klib）
-	@echo "🎉 GitHub Release 创建完成！"
-	@echo "🔗 查看地址：https://github.com/kearth/klib/releases/tag/$(VERSION)"
+		--repo $(MODULE) \
+	echo "🎉 GitHub Release 创建完成！" \
+	echo "🔗 查看地址：https://github.com/kearth/klib/releases/tag/$(VERSION)"
 
 # 查看已发布的 Release
 list-releases:
