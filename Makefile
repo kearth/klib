@@ -64,6 +64,7 @@ tag:
 		git tag -a "$$CODE_VERSION" -m "Release $$CODE_VERSION"; \
 	fi; \
 	echo "📤 推送 tag 到远程..."; \
+	git push origin $(DEFAULT_BRANCH); \
 	git push origin "$$CODE_VERSION" || (echo "⚠️ 推送失败，请检查权限或远程状态" && exit 1); \
 	echo "✅ Tag 操作完成：$$CODE_VERSION";
 
