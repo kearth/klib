@@ -200,9 +200,11 @@ install-gh:
 	fi
 
 publish:
-	@make changelog
-	@make tag
-	@make release
+	@CODE_VERSION=$$(grep -E 'return "' $(VERSION_FILE) 2>/dev/null | sed -E 's/.*return "(v?[0-9]+\.[0-9]+\.[0-9]+)".*/\1/'); \
+	echo "🚀 准备发布版本：$$CODE_VERSION"; \
+	make changelog;  \
+	make tag; \
+	make release VERSION=$$CODE_VERSION
 # 帮助信息
 help:
 	@echo "可用命令:"
@@ -228,9 +230,6 @@ help:
 	@echo "  快速 Commit 命令（简化+规范提交）:"
 	@echo "    make commit-<类型> MSG=\"描述\"  快速提交（如：make commit-feat MSG=\"新增功能\"）"
 	@echo "    make commit-help          查看快速 Commit 命令说明"
-	@echo "  Git Commit 规范（强制提交格式）:"
-	@echo "    make install-commit-hooks  安装提交规范钩子（自动校验格式）"
-	@echo "    make uninstall-commit-hooks  卸载提交规范钩子"
 
 # 默认命令：显示帮助
 .DEFAULT_GOAL := help
@@ -253,7 +252,7 @@ define upgrade_version
 	NEW_TAG="v$$NEW_VERSION" ; \
 	sed -i '' -E "s/return \"v?[0-9]+\.[0-9]+\.[0-9]+\"/return \"$$NEW_TAG\"/" $(VERSION_FILE) ; \
 	git add $(VERSION_FILE) ; \
-	git commit -m "$$NEW_TAG" ; 
+	git commit -m "$$NEW_TAG" ; \
 	echo "✅ 已更新版本：v$$CURRENT_VERSION → $$NEW_TAG" ; 
 endef
 
